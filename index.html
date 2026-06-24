@@ -2747,8 +2747,9 @@ function wireEvents() {
    LIGHT / DARK MODE TOGGLE
    ══════════════════════════════════════════════════════════════ */
 function initTheme() {
-  const saved = localStorage.getItem('sw_theme');
-  if (saved === 'light') applyTheme('light');
+  // Called after initMap() so the tile swap can actually run
+  const saved = localStorage.getItem('sw_theme') || 'dark';
+  applyTheme(saved);
 }
 
 function applyTheme(mode) {
@@ -2786,17 +2787,17 @@ function initApp() {
   // (Called by loadScripts() above, not DOMContentLoaded — this
   //  avoids "L is not defined" when CDNs are slow to respond.)
 
-  // 1. Apply church branding & saved theme
+  // 1. Apply church branding
   applyChurchName();
-  initTheme();
 
   // 2. Build UI components
   buildTeamSelector();
   buildOutcomeGrid();
   buildFilterBar();
 
-  // 3. Initialize map
+  // 3. Initialize map, then apply saved theme (theme swap needs map to exist)
   initMap();
+  initTheme();
 
   // 4. Load locally-stored visits first (instant display)
   const localVisits = loadLocalVisits();

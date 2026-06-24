@@ -802,6 +802,27 @@ svg.leaflet-image-layer.leaflet-interactive path {
       --mono: 'SF Mono', 'Fira Code', monospace;
     }
 
+    /* ── Light Mode — toggled via body.light-mode ─── */
+    body.light-mode {
+      --bg-deep:      #f0f4f8;
+      --bg-card:      #ffffff;
+      --bg-raised:    #e8eef5;
+      --bg-input:     #dde5ef;
+      --border:       #c5d0de;
+      --border-light: #a0b0c4;
+
+      --amber:        #d97706;
+      --amber-dim:    #b45309;
+      --amber-glow:   rgba(217,119,6,0.15);
+
+      --text-primary:   #1a2535;
+      --text-secondary: #4a6080;
+      --text-muted:     #7a95b0;
+
+      --shadow:    0 4px 24px rgba(0,0,0,0.12);
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
     /* ── Reset & Base ─────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -1426,6 +1447,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
     <!-- FAB area -->
     <div id="fab-wrap">
+      <!-- Light/dark mode toggle -->
+      <button class="fab-mini" id="btn-theme" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">☀️</button>
       <!-- Heatmap toggle -->
       <button class="fab-mini" id="btn-heat" title="Toggle heatmap" aria-label="Toggle heatmap">🌡️</button>
       <!-- Center on location -->
@@ -2519,6 +2542,7 @@ function wireEvents() {
 
   // FAB buttons
   document.getElementById('btn-log').onclick    = openLogModal;
+  document.getElementById('btn-theme').onclick  = toggleTheme;
   document.getElementById('btn-heat').onclick   = toggleHeatmap;
   document.getElementById('btn-center').onclick = () => {
     if (state.currentPos) {
@@ -2596,6 +2620,41 @@ function wireEvents() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   LIGHT / DARK MODE TOGGLE
+   ══════════════════════════════════════════════════════════════ */
+function initTheme() {
+  const saved = localStorage.getItem('sw_theme');
+  if (saved === 'light') applyTheme('light');
+}
+
+function applyTheme(mode) {
+  const isLight = mode === 'light';
+  document.body.classList.toggle('light-mode', isLight);
+  localStorage.setItem('sw_theme', isLight ? 'light' : 'dark');
+
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = isLight ? '🌙' : '☀️';
+
+  // Swap map tiles to match — light tiles in day, dark at night
+  if (map) {
+    map.eachLayer(layer => { if (layer._url) map.removeLayer(layer); });
+    L.tileLayer(
+      isLight
+        ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      {
+        attribution: '© <a href="https://www.openstreetmap.org/">OSM</a> © <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd', maxZoom: 19,
+      }
+    ).addTo(map);
+  }
+}
+
+function toggleTheme() {
+  applyTheme(document.body.classList.contains('light-mode') ? 'dark' : 'light');
+}
+
+/* ══════════════════════════════════════════════════════════════
    BOOT SEQUENCE
    ══════════════════════════════════════════════════════════════ */
 function initApp() {
@@ -2603,8 +2662,9 @@ function initApp() {
   // (Called by loadScripts() above, not DOMContentLoaded — this
   //  avoids "L is not defined" when CDNs are slow to respond.)
 
-  // 1. Apply church branding
+  // 1. Apply church branding & saved theme
   applyChurchName();
+  initTheme();
 
   // 2. Build UI components
   buildTeamSelector();

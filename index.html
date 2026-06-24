@@ -1334,6 +1334,31 @@ svg.leaflet-image-layer.leaflet-interactive path {
     @keyframes toast-in  { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
     @keyframes toast-out { from { opacity:1; } to { opacity:0; } }
 
+    /* ── Help Modal Content ───────────────────────── */
+    .help-section { margin-bottom: 20px; }
+    .help-section-title {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      color: var(--amber); margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .help-row {
+      display: flex; gap: 12px; align-items: flex-start;
+      margin-bottom: 12px; font-size: 13px;
+      color: var(--text-secondary); line-height: 1.5;
+    }
+    .help-row strong { color: var(--text-primary); }
+    .help-icon {
+      font-size: 18px; flex-shrink: 0;
+      width: 26px; text-align: center; margin-top: 1px;
+    }
+    .help-link {
+      color: var(--amber); text-decoration: none;
+      font-weight: 600; word-break: break-all;
+    }
+    .help-link:hover { text-decoration: underline; }
+
     /* ── Visit List (in sidebar or modal) ─────────── */
     .visit-item {
       background: var(--bg-raised);
@@ -1551,6 +1576,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <div class="sidebar-section">
     <div class="sidebar-section-title">Settings</div>
+    <button class="sidebar-btn" id="sb-help">
+      <span class="icon">❓</span> Help &amp; About
+    </button>
     <button class="sidebar-btn" id="sb-setup">
       <span class="icon">⚙️</span> Firebase Setup
     </button>
@@ -1562,7 +1590,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div style="padding:16px; margin-top:auto;">
     <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
       Soul Winner PWA<br>
-      Open source · <a href="https://github.com" target="_blank" style="color:var(--amber); text-decoration:none;">GitHub</a>
+      Open source · <a href="https://github.com/FBCKJV/SoulWinning" target="_blank" style="color:var(--amber); text-decoration:none;">GitHub</a>
     </div>
   </div>
 </div>
@@ -1615,6 +1643,88 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="modal-footer">
       <button class="btn btn-secondary" id="modal-setup-cancel">Cancel</button>
       <button class="btn btn-primary" id="modal-setup-save">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     HELP & ABOUT MODAL
+════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-help">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">❓ Help &amp; About</div>
+      <button class="modal-close" id="modal-help-close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="help-section">
+        <div class="help-section-title">Using the App</div>
+
+        <div class="help-row">
+          <span class="help-icon">👥</span>
+          <div><strong>Your Team</strong> — Pick your team from the top dropdown before logging visits. Each team gets its own color on the map.</div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">📍</span>
+          <div><strong>Log Visit</strong> — Tap the big amber button after knocking on a door. Choose what happened, add a note if needed, and hit Save.</div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">🗺️</span>
+          <div><strong>Filter Map</strong> — Use the "Show:" dropdown to view just one team's visits or all teams at once.</div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">☀️</span>
+          <div><strong>Light / Dark</strong> — Tap the sun/moon button in the top bar to switch between light mode (daytime) and dark mode (nighttime).</div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">🌡️</span>
+          <div><strong>Heatmap</strong> — Tap the thermometer button to see a color overlay showing which streets have the most coverage.</div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">⊕</span>
+          <div><strong>Re-center</strong> — Tap the crosshair button to snap the map back to your current location.</div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">🟢</span>
+          <div><strong>Sync status</strong> — Bottom-left shows "Synced" (connected) or "Offline" (no internet — visits still save locally and sync when you reconnect).</div>
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Sharing with Your Team</div>
+        <div class="help-row">
+          <span class="help-icon">🔗</span>
+          <div>Send teammates this link:<br>
+            <a href="https://fbckjv.github.io/SoulWinning/" target="_blank" class="help-link">fbckjv.github.io/SoulWinning</a>
+          </div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">📲</span>
+          <div><strong>Install on home screen</strong> — On Android: tap ⋮ → "Add to Home Screen". On iPhone: tap Share → "Add to Home Screen". Works like a real app.</div>
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">For Admins &amp; Other Churches</div>
+        <div class="help-row">
+          <span class="help-icon">📖</span>
+          <div>Full setup guide, team customization, and Firebase instructions are in the README on GitHub:<br>
+            <a href="https://github.com/FBCKJV/SoulWinning" target="_blank" class="help-link">github.com/FBCKJV/SoulWinning</a>
+          </div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon">⛪</span>
+          <div>Any church can use this app free. Download the files from GitHub, create your own Firebase project, and deploy to GitHub Pages. Each church's data stays completely private.</div>
+        </div>
+      </div>
+
+      <div style="text-align:center; padding: 16px 0 4px; color: var(--text-muted); font-size: 11px; line-height: 1.8;">
+        Soul Winner PWA · MIT License<br>
+        Built for the local church · Free forever
+      </div>
+
     </div>
   </div>
 </div>
@@ -2591,6 +2701,8 @@ function wireEvents() {
     }
     closeSidebar();
   };
+  document.getElementById('sb-help').onclick  = () => { openModal('modal-help'); closeSidebar(); };
+  document.getElementById('modal-help-close').onclick = () => closeModal('modal-help');
   document.getElementById('sb-setup').onclick = openSetupModal;
   document.getElementById('sb-clear').onclick = () => { clearAllData(); closeSidebar(); };
 

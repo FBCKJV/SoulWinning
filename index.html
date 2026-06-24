@@ -47,6 +47,10 @@ STEP 4 — Set Database Security Rules
       ".read": "auth != null",
       ".write": "auth != null"
     },
+    "beacons": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "congregation": {
       ".read": "auth != null",
       ".write": "auth != null"
@@ -1334,6 +1338,77 @@ svg.leaflet-image-layer.leaflet-interactive path {
     @keyframes toast-in  { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
     @keyframes toast-out { from { opacity:1; } to { opacity:0; } }
 
+    /* ── Address Search ──────────────────────────── */
+    #search-wrap {
+      position: relative; flex: 1; min-width: 0;
+    }
+    #addr-search {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 5px 10px;
+      font-size: 13px; font-family: var(--font);
+      outline: none;
+    }
+    #addr-search:focus { border-color: var(--amber); }
+    #addr-search::placeholder { color: var(--text-muted); }
+    #search-results {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      z-index: 2000; max-height: 200px; overflow-y: auto;
+      display: none;
+      box-shadow: var(--shadow);
+    }
+    #search-results.open { display: block; }
+    .search-result {
+      padding: 10px 12px;
+      font-size: 13px; color: var(--text-primary);
+      cursor: pointer; border-bottom: 1px solid var(--border);
+      line-height: 1.3;
+    }
+    .search-result:last-child { border-bottom: none; }
+    .search-result:hover { background: var(--bg-raised); }
+    .search-result-main { font-weight: 500; }
+    .search-result-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Beacon Markers ───────────────────────────── */
+    .beacon-marker {
+      position: relative;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 3px;
+    }
+    .beacon-marker::before {
+      content: '📍';
+      font-size: 28px; line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .beacon-pulse {
+      position: absolute; top: -4px; left: 50%;
+      transform: translateX(-50%);
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid;
+      animation: beacon-ping 2s ease-out infinite;
+      pointer-events: none;
+    }
+    @keyframes beacon-ping {
+      0%   { transform: translateX(-50%) scale(0.5); opacity: 1; }
+      100% { transform: translateX(-50%) scale(2); opacity: 0; }
+    }
+    .beacon-label {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 11px; font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      box-shadow: var(--shadow-sm);
+    }
+
     /* ── Help Modal Content ───────────────────────── */
     .help-section { margin-bottom: 20px; }
     .help-section-title {
@@ -1455,8 +1530,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <button id="btn-theme" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">☀️</button>
       <button id="btn-menu" aria-label="Menu" title="Menu">☰</button>
     </div>
-    <!-- Row 2: filter by team -->
+    <!-- Row 2: address search + filter -->
     <div id="topbar-row2">
+      <div id="search-wrap">
+        <input id="addr-search" type="search" placeholder="🔍 Search address…" autocomplete="off">
+        <div id="search-results"></div>
+      </div>
       <span id="filter-label">Show:</span>
       <select id="filter-select">
         <option value="all">All Teams</option>
@@ -1730,6 +1809,31 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
+     MAP TAP ACTION SHEET
+════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-maptap">
+  <div class="modal-sheet" style="padding-bottom:env(safe-area-inset-bottom,16px);">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">📍 What would you like to do here?</div>
+      <button class="modal-close" id="modal-maptap-close">✕</button>
+    </div>
+    <div class="modal-body" style="padding-bottom:8px;">
+      <div id="maptap-coords" class="text-muted" style="font-size:12px; text-align:center; margin-bottom:16px;"></div>
+      <button class="btn btn-primary" id="btn-maptap-visit" style="width:100%; margin-bottom:10px;">
+        ✝ Log Visit Here
+      </button>
+      <button class="btn btn-secondary" id="btn-maptap-beacon" style="width:100%; border-color:var(--amber); color:var(--amber);">
+        📍 Drop Team Beacon Here
+      </button>
+      <p style="font-size:11px; color:var(--text-muted); text-align:center; margin-top:12px; line-height:1.5;">
+        Beacons are visible to all teams in real time and auto-expire after 2 hours
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
      TOAST CONTAINER
 ════════════════════════════════════════════════════════════ -->
 <div id="toast-wrap"></div>
@@ -1849,6 +1953,8 @@ const FIREBASE_CONFIG_DEFAULT = {
 const state = {
   visits:        {},          // { id: visitObj } — ground truth
   markers:       {},          // { id: leafletMarker }
+  beacons:       {},          // { teamId: beaconObj } — team location pins
+  beaconMarkers: {},          // { teamId: leafletMarker }
   heatLayer:     null,
   heatVisible:   false,
   filterTeam:    'all',
@@ -1861,6 +1967,8 @@ const state = {
   isOnline:      navigator.onLine,
   offlineQueue:  [],          // visits logged while offline
   selectedOutcome: null,
+  mapTapPos:     null,        // { lat, lng } — position from map tap/long-press
+  beaconExpireMs: 2 * 60 * 60 * 1000, // beacons auto-expire after 2 hours
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1943,6 +2051,27 @@ function subscribeToVisits() {
       delete state.visits[visit.id];
       updateStats();
     }
+  });
+
+  // Subscribe to beacons (team location pins)
+  const beaconRef = state.db.ref('beacons');
+  beaconRef.on('value', snapshot => {
+    const now = Date.now();
+    const data = snapshot.val() || {};
+    // Remove stale beacon markers
+    Object.keys(state.beaconMarkers).forEach(teamId => {
+      if (!data[teamId]) {
+        map.removeLayer(state.beaconMarkers[teamId]);
+        delete state.beaconMarkers[teamId];
+        delete state.beacons[teamId];
+      }
+    });
+    // Add/update beacon markers
+    Object.entries(data).forEach(([teamId, beacon]) => {
+      if (now - beacon.timestamp > state.beaconExpireMs) return; // expired
+      state.beacons[teamId] = beacon;
+      updateBeaconMarker(beacon);
+    });
   });
 
   // Connection state monitor
@@ -2051,6 +2180,92 @@ function removeMarker(id) {
   }
   refreshHeatmap();
 }
+
+/* ══════════════════════════════════════════════════════════════
+   TEAM BEACONS — Visible team location pins
+   ══════════════════════════════════════════════════════════════ */
+function createBeaconIcon(color, label) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="beacon-marker" style="background:${color};">
+             <div class="beacon-pulse" style="border-color:${color};"></div>
+             <span class="beacon-label">${escHtml(label)}</span>
+           </div>`,
+    iconSize:   [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor:[0, -40],
+  });
+}
+
+function updateBeaconMarker(beacon) {
+  const color = teamColor(beacon.team);
+  const label = teamLabel(beacon.team);
+  const time  = new Date(beacon.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  if (state.beaconMarkers[beacon.team]) {
+    map.removeLayer(state.beaconMarkers[beacon.team]);
+  }
+
+  const marker = L.marker([beacon.lat, beacon.lng], {
+    icon: createBeaconIcon(color, label),
+    zIndexOffset: 1000,
+  });
+
+  marker.bindPopup(`
+    <div class="popup-wrap">
+      <span class="popup-team" style="background:${color}22;color:${color};">📍 ${escHtml(label)}</span>
+      <div class="popup-notes" style="margin-top:6px;">Team beacon — we're here!</div>
+      <div class="popup-meta">🕐 Dropped at ${time}</div>
+      <div class="popup-meta" style="margin-top:4px;">Auto-expires in 2 hrs</div>
+      <button onclick="removeBeacon('${beacon.team}')"
+        style="border:none;background:rgba(239,68,68,0.12);color:#ef4444;
+               border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;
+               font-family:inherit;margin-top:6px;">
+        Remove Beacon
+      </button>
+    </div>
+  `);
+
+  marker.addTo(map);
+  state.beaconMarkers[beacon.team] = marker;
+}
+
+function dropBeacon(lat, lng) {
+  const teamId = document.getElementById('team-select').value;
+  const beacon = {
+    team:      teamId,
+    lat,
+    lng,
+    timestamp: Date.now(),
+    userId:    state.userId || 'local',
+  };
+
+  // Save locally
+  state.beacons[teamId] = beacon;
+  updateBeaconMarker(beacon);
+
+  // Push to Firebase
+  if (state.db && state.isOnline) {
+    state.db.ref(`beacons/${teamId}`).set(beacon)
+      .then(() => toast(`📍 ${teamLabel(teamId)} beacon dropped — visible to all teams`, 'success'))
+      .catch(() => toast('Beacon saved locally — will sync when online'));
+  } else {
+    toast(`📍 ${teamLabel(teamId)} beacon dropped`);
+  }
+}
+
+window.removeBeacon = function(teamId) {
+  if (state.beaconMarkers[teamId]) {
+    map.removeLayer(state.beaconMarkers[teamId]);
+    delete state.beaconMarkers[teamId];
+    delete state.beacons[teamId];
+  }
+  if (state.db && state.isOnline) {
+    state.db.ref(`beacons/${teamId}`).remove().catch(() => {});
+  }
+  map.closePopup();
+  toast('Beacon removed');
+};
 
 /* ══════════════════════════════════════════════════════════════
    HEATMAP
@@ -2660,6 +2875,27 @@ function wireEvents() {
   });
 
   // Top bar
+  // Map tap action sheet
+  document.getElementById('modal-maptap-close').onclick = () => closeModal('modal-maptap');
+  document.getElementById('btn-maptap-visit').onclick = () => {
+    if (!state.mapTapPos) return;
+    // Pre-fill position and open log modal
+    state.currentPos = state.mapTapPos; // temporarily override GPS with tapped pos
+    closeModal('modal-maptap');
+    // Reset form
+    state.selectedOutcome = null;
+    document.getElementById('visit-notes').value = '';
+    document.querySelectorAll('.outcome-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('coord-preview').textContent =
+      `📍 ${state.mapTapPos.lat.toFixed(5)}, ${state.mapTapPos.lng.toFixed(5)} (map tap)`;
+    openModal('modal-log');
+  };
+  document.getElementById('btn-maptap-beacon').onclick = () => {
+    if (!state.mapTapPos) return;
+    dropBeacon(state.mapTapPos.lat, state.mapTapPos.lng);
+    closeModal('modal-maptap');
+  };
+
   document.getElementById('btn-menu').onclick = openSidebar;
 
   // FAB buttons
@@ -2744,6 +2980,121 @@ function wireEvents() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ADDRESS SEARCH (Nominatim — free, no API key)
+   ══════════════════════════════════════════════════════════════ */
+let searchTimeout = null;
+
+function initAddressSearch() {
+  const input   = document.getElementById('addr-search');
+  const results = document.getElementById('search-results');
+  if (!input) return;
+
+  input.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const q = input.value.trim();
+    if (q.length < 3) { results.classList.remove('open'); return; }
+    searchTimeout = setTimeout(() => searchAddress(q), 500);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { results.classList.remove('open'); input.blur(); }
+  });
+
+  // Close on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#search-wrap')) results.classList.remove('open');
+  });
+}
+
+async function searchAddress(query) {
+  const results = document.getElementById('search-results');
+  results.innerHTML = '<div class="search-result"><div class="search-result-main text-muted">Searching…</div></div>';
+  results.classList.add('open');
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`;
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+
+    if (!data.length) {
+      results.innerHTML = '<div class="search-result"><div class="search-result-main text-muted">No results found</div></div>';
+      return;
+    }
+
+    results.innerHTML = data.map(r => {
+      const parts = r.display_name.split(', ');
+      const main  = parts.slice(0, 2).join(', ');
+      const sub   = parts.slice(2, 5).join(', ');
+      return `<div class="search-result" data-lat="${r.lat}" data-lng="${r.lon}">
+        <div class="search-result-main">${escHtml(main)}</div>
+        ${sub ? `<div class="search-result-sub">${escHtml(sub)}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    results.querySelectorAll('.search-result').forEach(el => {
+      el.addEventListener('click', () => {
+        const lat = parseFloat(el.dataset.lat);
+        const lng = parseFloat(el.dataset.lng);
+        map.setView([lat, lng], 17, { animate: true });
+        results.classList.remove('open');
+        document.getElementById('addr-search').value = '';
+        document.getElementById('addr-search').blur();
+      });
+    });
+  } catch(err) {
+    results.innerHTML = '<div class="search-result"><div class="search-result-main text-muted">Search unavailable offline</div></div>';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAP TAP — Long-press or tap-hold to drop pin / log visit
+   ══════════════════════════════════════════════════════════════ */
+function initMapTap() {
+  let longPressTimer = null;
+  const LONG_PRESS_MS = 600;
+
+  // Desktop: right-click context menu
+  map.on('contextmenu', e => {
+    openMapTapSheet(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Mobile: long-press (touchstart → wait → touchend without move)
+  map.on('touchstart', e => {
+    if (e.originalEvent.touches.length !== 1) return;
+    const touch = e.originalEvent.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+
+    longPressTimer = setTimeout(() => {
+      // Vibrate if supported — tactile feedback for long press
+      if (navigator.vibrate) navigator.vibrate(40);
+      openMapTapSheet(e.latlng.lat, e.latlng.lng);
+    }, LONG_PRESS_MS);
+
+    const cancel = (moveE) => {
+      if (moveE) {
+        const t = moveE.originalEvent.touches[0];
+        const dx = Math.abs(t.clientX - startX);
+        const dy = Math.abs(t.clientY - startY);
+        if (dx > 10 || dy > 10) { clearTimeout(longPressTimer); longPressTimer = null; }
+      } else {
+        clearTimeout(longPressTimer); longPressTimer = null;
+      }
+    };
+
+    map.once('touchmove', cancel);
+    map.once('touchend', () => { clearTimeout(longPressTimer); longPressTimer = null; });
+  });
+}
+
+function openMapTapSheet(lat, lng) {
+  state.mapTapPos = { lat, lng };
+  document.getElementById('maptap-coords').textContent =
+    `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  openModal('modal-maptap');
+}
+
+/* ══════════════════════════════════════════════════════════════
    LIGHT / DARK MODE TOGGLE
    ══════════════════════════════════════════════════════════════ */
 function initTheme() {
@@ -2798,6 +3149,8 @@ function initApp() {
   // 3. Initialize map, then apply saved theme (theme swap needs map to exist)
   initMap();
   initTheme();
+  initAddressSearch();
+  initMapTap();
 
   // 4. Load locally-stored visits first (instant display)
   const localVisits = loadLocalVisits();

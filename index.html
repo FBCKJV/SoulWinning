@@ -839,22 +839,28 @@ svg.leaflet-image-layer.leaflet-interactive path {
     /* ── Top Bar ──────────────────────────────────── */
     #topbar {
       position: relative; z-index: 1000;
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 14px;
       background: var(--bg-card);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
-    #topbar .logo {
+    #topbar-row1 {
       display: flex; align-items: center; gap: 8px;
-      font-weight: 700; font-size: 15px; letter-spacing: -0.2px;
+      padding: 8px 12px;
+    }
+    #topbar-row2 {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 12px 8px;
+    }
+    #topbar .logo {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 700; font-size: 14px; letter-spacing: -0.2px;
       color: var(--amber);
       flex-shrink: 0;
     }
-    #topbar .logo .cross { font-size: 20px; }
+    #topbar .logo .cross { font-size: 18px; }
     #topbar .church-name {
-      font-size: 12px; color: var(--text-secondary);
-      font-weight: 400; max-width: 120px;
+      font-size: 11px; color: var(--text-secondary);
+      font-weight: 400; max-width: 90px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     #team-select {
@@ -872,17 +878,37 @@ svg.leaflet-image-layer.leaflet-interactive path {
       background-position: right 10px center;
       padding-right: 28px;
     }
-    #btn-menu {
-      width: 36px; height: 36px; flex-shrink: 0;
+    #filter-label {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    #filter-select {
+      flex: 1; min-width: 0;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 5px 10px;
+      font-size: 12px;
+      font-family: var(--font);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fa3c0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+    #btn-theme, #btn-menu {
+      width: 34px; height: 34px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       background: var(--bg-raised);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       color: var(--text-secondary);
-      cursor: pointer; font-size: 18px;
+      cursor: pointer; font-size: 16px;
       transition: color 0.15s, border-color 0.15s;
     }
-    #btn-menu:hover { color: var(--text-primary); border-color: var(--border-light); }
+    #btn-theme:hover, #btn-menu:hover { color: var(--text-primary); border-color: var(--border-light); }
 
     /* ── Map Container ────────────────────────────── */
     #map-wrap { flex: 1; position: relative; overflow: hidden; }
@@ -995,7 +1021,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px;
     }
 
-    /* GPS status indicator */
+    /* GPS status indicator — centered, fades after lock */
     #gps-status {
       position: absolute;
       top: 10px; left: 50%; transform: translateX(-50%);
@@ -1008,8 +1034,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
       display: flex; align-items: center; gap: 6px;
       pointer-events: none;
       transition: opacity 0.3s;
+      white-space: nowrap;
     }
-    #gps-status.hidden { opacity: 0; }
+    #gps-status.hidden { opacity: 0; pointer-events: none; }
     #gps-dot {
       width: 8px; height: 8px; border-radius: 50%;
       background: var(--text-muted);
@@ -1020,10 +1047,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
     #gps-status.loading #gps-dot { background: var(--amber); animation: blink 1s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    /* Online/offline indicator */
+    /* Online/offline indicator — bottom-left above stats bar */
     #sync-badge {
       position: absolute;
-      top: 10px; right: 10px;
+      bottom: 56px; left: 10px;
       z-index: 800;
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -1037,34 +1064,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     #sync-badge.offline #sync-dot { background: var(--red); }
     #sync-badge.syncing #sync-dot { background: var(--amber); animation: blink 0.6s infinite; }
 
-    /* ── Filter Bar ───────────────────────────────── */
-    #filter-bar {
-      position: absolute;
-      top: 10px; left: 10px;
-      z-index: 800;
-      display: flex; gap: 6px; flex-wrap: nowrap;
-      max-width: calc(100vw - 100px);
-      overflow-x: auto; scrollbar-width: none;
-    }
-    #filter-bar::-webkit-scrollbar { display: none; }
-    .filter-chip {
-      padding: 5px 12px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--bg-card);
-      color: var(--text-secondary);
-      font-size: 12px; font-weight: 500;
-      cursor: pointer; white-space: nowrap;
-      transition: all 0.15s;
-      flex-shrink: 0;
-    }
-    .filter-chip.active {
-      background: var(--amber-glow);
-      border-color: var(--amber);
-      color: var(--amber);
-    }
+    /* ── Filter Bar — replaced by #filter-select in topbar ── */
 
-    /* ── Modal / Panel ────────────────────────────── */
+    /* ── GPS Status Pill ─────────────────────────────── */
     .modal-overlay {
       position: fixed; inset: 0; z-index: 2000;
       background: rgba(0,0,0,0.7);
@@ -1418,12 +1420,23 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <!-- Top Bar -->
   <div id="topbar">
-    <div class="logo">
-      <span class="cross">✝</span>
-      <span class="church-name" id="display-church-name">Soul Winner</span>
+    <!-- Row 1: logo, team selector, menu -->
+    <div id="topbar-row1">
+      <div class="logo">
+        <span class="cross">✝</span>
+        <span class="church-name" id="display-church-name">Soul Winner</span>
+      </div>
+      <select id="team-select"></select>
+      <button id="btn-theme" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">☀️</button>
+      <button id="btn-menu" aria-label="Menu" title="Menu">☰</button>
     </div>
-    <select id="team-select"></select>
-    <button id="btn-menu" aria-label="Menu" title="Menu">☰</button>
+    <!-- Row 2: filter by team -->
+    <div id="topbar-row2">
+      <span id="filter-label">Show:</span>
+      <select id="filter-select">
+        <option value="all">All Teams</option>
+      </select>
+    </div>
   </div>
 
   <!-- Map -->
@@ -1436,9 +1449,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <span id="gps-text">Locating…</span>
     </div>
 
-    <!-- Filter chips (top-left) -->
-    <div id="filter-bar"></div>
-
     <!-- Sync badge (top-right) -->
     <div id="sync-badge" class="offline">
       <div id="sync-dot"></div>
@@ -1447,8 +1457,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
     <!-- FAB area -->
     <div id="fab-wrap">
-      <!-- Light/dark mode toggle -->
-      <button class="fab-mini" id="btn-theme" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">☀️</button>
       <!-- Heatmap toggle -->
       <button class="fab-mini" id="btn-heat" title="Toggle heatmap" aria-label="Toggle heatmap">🌡️</button>
       <!-- Center on location -->
@@ -1974,28 +1982,26 @@ function toggleHeatmap() {
    FILTER
    ══════════════════════════════════════════════════════════════ */
 function buildFilterBar() {
-  const bar = document.getElementById('filter-bar');
-  bar.innerHTML = '';
-
-  const chips = [{ id: 'all', label: 'All Teams' }, ...TEAMS];
-
-  chips.forEach(t => {
-    const chip = document.createElement('button');
-    chip.className = 'filter-chip' + (state.filterTeam === t.id ? ' active' : '');
-    chip.textContent = t.label || 'All Teams';
-    chip.onclick = () => setFilter(t.id);
-    bar.appendChild(chip);
+  // Populate the filter dropdown in the top bar
+  const sel = document.getElementById('filter-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="all">All Teams</option>';
+  TEAMS.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.label;
+    sel.appendChild(opt);
   });
+  sel.value = state.filterTeam;
+  sel.addEventListener('change', () => setFilter(sel.value));
 }
 
 function setFilter(teamId) {
   state.filterTeam = teamId;
 
-  // Update chip styles
-  document.querySelectorAll('.filter-chip').forEach((c, i) => {
-    const chips = [{ id: 'all' }, ...TEAMS];
-    c.classList.toggle('active', chips[i].id === teamId);
-  });
+  // Keep dropdown in sync
+  const sel = document.getElementById('filter-select');
+  if (sel) sel.value = teamId;
 
   // Show/hide markers
   Object.keys(state.markers).forEach(id => {

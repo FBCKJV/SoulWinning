@@ -2173,9 +2173,15 @@ function startGPS() {
 
   state.gpsWatchId = navigator.geolocation.watchPosition(
     pos => {
+      const isFirstFix = !state.currentPos;
       state.currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setGPSStatus('ready', 'GPS ready');
       document.getElementById('btn-log').classList.add('gps-ready');
+
+      // Auto-center on the very first GPS fix
+      if (isFirstFix && map) {
+        map.setView([state.currentPos.lat, state.currentPos.lng], 16, { animate: true });
+      }
 
       // Update coord preview if log modal is open
       const preview = document.getElementById('coord-preview');

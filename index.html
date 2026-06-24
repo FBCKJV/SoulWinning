@@ -1969,6 +1969,7 @@ const state = {
   offlineQueue:  [],          // visits logged while offline
   selectedOutcome: null,
   mapTapPos:     null,        // { lat, lng } — position from map tap/long-press
+  logPos:        null,        // { lat, lng, source } — position locked at modal open, immune to GPS updates
   beaconExpireMs: 2 * 60 * 60 * 1000, // beacons auto-expire after 2 hours
 };
 
@@ -2443,6 +2444,9 @@ function openLogModal() {
     return;
   }
 
+  // Lock the position NOW — GPS watch won't overwrite this
+  state.logPos = { ...state.currentPos, source: 'gps' };
+
   // Reset form
   state.selectedOutcome = null;
   document.getElementById('visit-notes').value = '';
@@ -2451,14 +2455,14 @@ function openLogModal() {
   // Show coords
   const preview = document.getElementById('coord-preview');
   preview.textContent =
-    `📡 ${state.currentPos.lat.toFixed(5)}, ${state.currentPos.lng.toFixed(5)}`;
+    `📡 ${state.logPos.lat.toFixed(5)}, ${state.logPos.lng.toFixed(5)}`;
 
   openModal('modal-log');
 }
 
 function saveVisit() {
-  if (!state.currentPos) {
-    toast('No GPS position — cannot save', 'error');
+  if (!state.logPos) {
+    toast('No position set — cannot save', 'error');
     return;
   }
 
@@ -2473,13 +2477,16 @@ function saveVisit() {
 
   const visit = {
     id:        crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
-    lat:       state.currentPos.lat,
-    lng:       state.currentPos.lng,
+    lat:       state.logPos.lat,   // ← always the locked position, never overwritten by GPS
+    lng:       state.logPos.lng,
     timestamp: Date.now(),
     notes,
     team:      teamId,
     userId:    state.userId || 'local',
   };
+
+  // Clear logPos so next open starts fresh
+  state.logPos = null;
 
   // Save locally immediately
   state.visits[visit.id] = visit;
@@ -2880,15 +2887,15 @@ function wireEvents() {
   document.getElementById('modal-maptap-close').onclick = () => closeModal('modal-maptap');
   document.getElementById('btn-maptap-visit').onclick = () => {
     if (!state.mapTapPos) return;
-    // Pre-fill position and open log modal
-    state.currentPos = state.mapTapPos; // temporarily override GPS with tapped pos
+    // Lock the tapped position into logPos — GPS watch cannot overwrite this
+    state.logPos = { ...state.mapTapPos, source: 'maptap' };
     closeModal('modal-maptap');
     // Reset form
     state.selectedOutcome = null;
     document.getElementById('visit-notes').value = '';
     document.querySelectorAll('.outcome-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('coord-preview').textContent =
-      `📍 ${state.mapTapPos.lat.toFixed(5)}, ${state.mapTapPos.lng.toFixed(5)} (map tap)`;
+      `📍 ${state.mapTapPos.lat.toFixed(5)}, ${state.mapTapPos.lng.toFixed(5)} (map pin)`;
     openModal('modal-log');
   };
   document.getElementById('btn-maptap-beacon').onclick = () => {
@@ -2912,8 +2919,8 @@ function wireEvents() {
   };
 
   // Log modal
-  document.getElementById('modal-log-close').onclick  = () => closeModal('modal-log');
-  document.getElementById('modal-log-cancel').onclick = () => closeModal('modal-log');
+  document.getElementById('modal-log-close').onclick  = () => { state.logPos = null; closeModal('modal-log'); };
+  document.getElementById('modal-log-cancel').onclick = () => { state.logPos = null; closeModal('modal-log'); };
   document.getElementById('modal-log-save').onclick   = saveVisit;
 
   // Visits modal

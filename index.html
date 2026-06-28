@@ -1339,6 +1339,23 @@ svg.leaflet-image-layer.leaflet-interactive path {
     @keyframes toast-in  { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
     @keyframes toast-out { from { opacity:1; } to { opacity:0; } }
 
+    /* ── Outcome Color Legend ────────────────────── */
+    #color-legend {
+      position: absolute;
+      top: 10px; right: 10px;
+      z-index: 800;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0; cursor: help;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
     /* ── Address Search ──────────────────────────── */
     #search-wrap {
       position: relative; flex: 1; min-width: 0;
@@ -1537,6 +1554,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <input id="addr-search" type="search" placeholder="🔍 Search address…" autocomplete="off">
         <div id="search-results"></div>
       </div>
+      <button id="btn-colormode" title="Toggle pin colors: outcome / team"
+        style="flex-shrink:0;padding:5px 10px;background:var(--bg-input);
+               border:1px solid var(--border);border-radius:var(--radius-sm);
+               color:var(--amber);font-size:11px;font-weight:700;cursor:pointer;
+               font-family:var(--font);white-space:nowrap;">
+        🎯 Outcome
+      </button>
       <span id="filter-label">Show:</span>
       <select id="filter-select">
         <option value="all">All Teams</option>
@@ -1552,6 +1576,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div id="gps-status" class="loading">
       <div id="gps-dot"></div>
       <span id="gps-text">Locating…</span>
+    </div>
+
+    <!-- Outcome color legend -->
+    <div id="color-legend">
+      <div class="legend-dot" style="background:#22c55e;" title="Decision made"></div>
+      <div class="legend-dot" style="background:#3b82f6;" title="Follow-up / Prayer"></div>
+      <div class="legend-dot" style="background:#f59e0b;" title="Gospel shared"></div>
+      <div class="legend-dot" style="background:#eab308;" title="Left a tract"></div>
+      <div class="legend-dot" style="background:#6b7280;" title="Not home"></div>
+      <div class="legend-dot" style="background:#ef4444;" title="Not interested"></div>
     </div>
 
     <!-- Sync badge (top-right) -->
@@ -1635,6 +1669,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <button class="sidebar-btn" id="sb-view-visits">
       <span class="icon">📋</span> View All Visits
     </button>
+    <a href="./report.html" class="sidebar-btn" style="text-decoration:none;">
+      <span class="icon">📊</span> Reports &amp; Analysis
+    </a>
     <button class="sidebar-btn" id="sb-export">
       <span class="icon">⬇️</span> Export JSON
     </button>
@@ -1937,6 +1974,35 @@ const OUTCOMES = [
 ];
 
 /* ─────────────────────────────────────────────────────────────
+   OUTCOME COLORS — Maps outcome keywords to pin colors
+   Blue=followup, Green=decision, Yellow=tract, Red=hostile,
+   Orange=gospel, Gray=nothome, Purple=prayer
+   ──────────────────────────────────────────────────────────── */
+const OUTCOME_COLORS = {
+  'decision':  '#22c55e', // green
+  'followup':  '#3b82f6', // blue
+  'prayer':    '#3b82f6', // blue (same as followup — needs return visit)
+  'tract':     '#eab308', // yellow
+  'hostile':   '#ef4444', // red
+  'gospel':    '#f59e0b', // amber
+  'nothome':   '#6b7280', // gray
+  'custom':    '#a855f7', // purple
+};
+
+function outcomeColor(notes) {
+  if (!notes) return '#6b7280';
+  const n = notes.toLowerCase();
+  if (n.includes('decision'))      return OUTCOME_COLORS.decision;
+  if (n.includes('follow-up') || n.includes('followup') || n.includes('follow up')) return OUTCOME_COLORS.followup;
+  if (n.includes('prayer'))        return OUTCOME_COLORS.prayer;
+  if (n.includes('not interested') || n.includes('hostile')) return OUTCOME_COLORS.hostile;
+  if (n.includes('left a tract') || n.includes('tract'))     return OUTCOME_COLORS.tract;
+  if (n.includes('gospel'))        return OUTCOME_COLORS.gospel;
+  if (n.includes('not home'))      return OUTCOME_COLORS.nothome;
+  return '#a855f7'; // purple for other/custom
+}
+
+/* ─────────────────────────────────────────────────────────────
    FIREBASE CONFIG — REPLACE THIS WITH YOUR OWN CONFIG
    Instructions: Search "FIREBASE CONFIG" in the README above
    ──────────────────────────────────────────────────────────── */
@@ -1959,6 +2025,7 @@ const state = {
   heatLayer:     null,
   heatVisible:   false,
   filterTeam:    'all',
+  colorMode:     'outcome',   // 'outcome' or 'team'
   currentPos:    null,        // { lat, lng }
   gpsWatchId:    null,
   firebaseApp:   null,
@@ -2134,10 +2201,16 @@ function createMarkerIcon(color) {
   });
 }
 
+function visitPinColor(visit) {
+  return state.colorMode === 'outcome'
+    ? outcomeColor(visit.notes)
+    : teamColor(visit.team);
+}
+
 function addMarkerForVisit(visit) {
   if (state.markers[visit.id]) return; // already on map
 
-  const color  = teamColor(visit.team);
+  const color = visitPinColor(visit);
   const marker = L.marker([visit.lat, visit.lng], {
     icon: createMarkerIcon(color),
   });
@@ -2147,11 +2220,16 @@ function addMarkerForVisit(visit) {
     month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
+  const oColor = outcomeColor(visit.notes);
+  const tColor = teamColor(visit.team);
 
   marker.bindPopup(`
     <div class="popup-wrap">
-      <span class="popup-team" style="background:${color}22;color:${color};">
+      <span class="popup-team" style="background:${tColor}22;color:${tColor};">
         ${teamLabel(visit.team)}
+      </span>
+      <span class="popup-team" style="background:${oColor}22;color:${oColor};margin-left:4px;">
+        ${escHtml((visit.notes||'').split(' · ')[0] || 'Visit')}
       </span>
       <div class="popup-notes">${escHtml(visit.notes || '(no notes)')}</div>
       <div class="popup-meta">🕐 ${time}</div>
@@ -2908,7 +2986,8 @@ function wireEvents() {
 
   // FAB buttons
   document.getElementById('btn-log').onclick    = openLogModal;
-  document.getElementById('btn-theme').onclick  = toggleTheme;
+  document.getElementById('btn-theme').onclick     = toggleTheme;
+  document.getElementById('btn-colormode').onclick = toggleColorMode;
   document.getElementById('btn-heat').onclick   = toggleHeatmap;
   document.getElementById('btn-center').onclick = () => {
     if (state.currentPos) {
@@ -3100,6 +3179,24 @@ function openMapTapSheet(lat, lng) {
   document.getElementById('maptap-coords').textContent =
     `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   openModal('modal-maptap');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PIN COLOR MODE TOGGLE (outcome vs team)
+   ══════════════════════════════════════════════════════════════ */
+function toggleColorMode() {
+  state.colorMode = state.colorMode === 'outcome' ? 'team' : 'outcome';
+  const btn = document.getElementById('btn-colormode');
+  if (btn) btn.textContent = state.colorMode === 'outcome' ? '🎯 Outcome' : '👥 Team';
+
+  // Rebuild all markers with new colors
+  Object.keys(state.markers).forEach(id => {
+    const visit = state.visits[id];
+    if (!visit) return;
+    const marker = state.markers[id];
+    const newColor = visitPinColor(visit);
+    marker.setIcon(createMarkerIcon(newColor));
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════

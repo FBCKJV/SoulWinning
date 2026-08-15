@@ -1454,6 +1454,27 @@ svg.leaflet-image-layer.leaflet-interactive path {
     }
     .live-marker.is-me { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.5), 0 3px 8px rgba(0,0,0,0.55); }
 
+    /* ── "You are here" dot (always on, local GPS) ── */
+    .me-dot {
+      position: relative;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #2dd4ff;
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.6);
+    }
+    .me-dot::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid #2dd4ff;
+      animation: me-ping 2s ease-out infinite;
+      pointer-events: none;
+    }
+    @keyframes me-ping {
+      0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+      100% { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
+    }
+
     /* ── Born-again believer marker ───────────────── */
     .believer-marker {
       display: flex; align-items: center; justify-content: center;
@@ -2084,6 +2105,8 @@ const state = {
   liveShare:     false,       // am I broadcasting my live location?
   lastLivePush:  0,           // throttle timestamp for live pushes
   liveSweepId:   null,        // interval id for pruning stale live markers
+  meMarker:      null,        // always-on "you are here" dot (local, no Firebase)
+  meAccuracy:    null,        // accuracy circle around my position
   heatLayer:     null,
   heatVisible:   false,
   filterTeam:    'all',
@@ -2495,6 +2518,10 @@ function createLiveIcon(color, letter, isMe) {
 function updateLiveMarker(live) {
   if (!live || typeof live.lat !== 'number' || typeof live.lng !== 'number') return;
 
+  // My own position is already shown by the "you are here" dot — don't
+  // stack a redundant team badge on top of it. Others still see me.
+  if (live.userId === state.userId) return;
+
   const color  = teamColor(live.team);
   const letter = teamLetter(live.team);
   const isMe   = live.userId === state.userId;
@@ -2714,6 +2741,44 @@ function updateStats() {
 /* ══════════════════════════════════════════════════════════════
    GPS
    ══════════════════════════════════════════════════════════════ */
+
+// Always-on "you are here" dot. Purely local — driven by GPS, never
+// touches Firebase — so you always know where you are relative to the
+// houses around you, whether or not you're sharing your location.
+function updateMyLocationMarker(lat, lng, accuracy) {
+  if (!map) return;
+
+  if (!state.meMarker) {
+    state.meMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div class="me-dot" title="You are here"></div>`,
+        iconSize:   [16, 16],
+        iconAnchor: [8, 8],
+      }),
+      zIndexOffset: 2000, // above everything else
+      interactive:  false,
+    }).addTo(map);
+  } else {
+    state.meMarker.setLatLng([lat, lng]);
+  }
+
+  // Faint accuracy ring so you can judge how precise the fix is
+  if (typeof accuracy === 'number' && accuracy > 0) {
+    if (!state.meAccuracy) {
+      state.meAccuracy = L.circle([lat, lng], {
+        radius: accuracy,
+        color: '#2dd4ff', weight: 1, opacity: 0.5,
+        fillColor: '#2dd4ff', fillOpacity: 0.08,
+        interactive: false,
+      }).addTo(map);
+    } else {
+      state.meAccuracy.setLatLng([lat, lng]);
+      state.meAccuracy.setRadius(accuracy);
+    }
+  }
+}
+
 function startGPS() {
   if (!navigator.geolocation) {
     setGPSStatus('error', 'GPS not available');
@@ -2728,6 +2793,9 @@ function startGPS() {
       state.currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setGPSStatus('ready', 'GPS ready');
       document.getElementById('btn-log').classList.add('gps-ready');
+
+      // Always show where I am — local dot, independent of live sharing
+      updateMyLocationMarker(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
 
       // Auto-center on the very first GPS fix
       if (isFirstFix && map) {

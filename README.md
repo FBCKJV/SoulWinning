@@ -14,6 +14,7 @@ and see at a glance where your teams have been.
 - 🗺️ **Real-time map** showing all team visits across all devices
 - 🌡️ **Heatmap layer** revealing coverage density at a glance
 - 👥 **Multi-team support** with color-coded markers per team
+- 📍 **"You are here" dot** — an always-on local GPS marker (with accuracy ring) so you can see where you stand relative to the houses around you
 - 📡 **Live team location** — broadcast where you are in real time as your team letter (A, B, C…) so teams can find each other at a glance
 - 🙌 **Born-again believer marker** — flag homes of existing believers with a distinct teal cross so they stand out from visit dots
 - 🔍 **Filter by team** using the chip bar on the map

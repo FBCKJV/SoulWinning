@@ -1246,6 +1246,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
     .sidebar-btn:hover { color: var(--text-primary); border-color: var(--border-light); }
     .sidebar-btn .icon { font-size: 16px; width: 20px; text-align: center; }
     .sidebar-btn.danger:hover { color: var(--red); border-color: var(--red); }
+    .sidebar-btn.active {
+      color: #fff; border-color: var(--amber);
+      background: rgba(245, 158, 11, 0.18);
+    }
 
     /* ── Popup styles ─────────────────────────────── */
     .popup-wrap { min-width: 180px; max-width: 240px; }
@@ -1427,6 +1431,39 @@ svg.leaflet-image-layer.leaflet-interactive path {
       box-shadow: var(--shadow-sm);
     }
 
+    /* ── Live Team Markers (real-time position) ───── */
+    .live-marker {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 3px solid #fff;
+      color: #fff; font-weight: 800; font-size: 17px; line-height: 1;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.55);
+    }
+    .live-marker .live-pulse {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 2px solid;
+      animation: live-ping 1.8s ease-out infinite;
+      pointer-events: none;
+    }
+    @keyframes live-ping {
+      0%   { transform: translate(-50%, -50%) scale(0.7); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+    }
+    .live-marker.is-me { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.5), 0 3px 8px rgba(0,0,0,0.55); }
+
+    /* ── Born-again believer marker ───────────────── */
+    .believer-marker {
+      display: flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #14b8a6;
+      border: 2px solid rgba(255,255,255,0.85);
+      color: #fff; font-size: 13px; line-height: 1;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
     /* ── Help Modal Content ───────────────────────── */
     .help-section { margin-bottom: 20px; }
     .help-section-title {
@@ -1581,6 +1618,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <!-- Outcome color legend -->
     <div id="color-legend">
       <div class="legend-dot" style="background:#22c55e;" title="Decision made"></div>
+      <div class="legend-dot" style="background:#14b8a6;" title="Born-again believer"></div>
       <div class="legend-dot" style="background:#3b82f6;" title="Follow-up / Prayer"></div>
       <div class="legend-dot" style="background:#f59e0b;" title="Gospel shared"></div>
       <div class="legend-dot" style="background:#eab308;" title="Left a tract"></div>
@@ -1662,6 +1700,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="sidebar-header">
     <div class="sidebar-title">Soul Winner</div>
     <div class="sidebar-sub" id="sidebar-church-sub">Door-to-door evangelism map</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Team</div>
+    <button class="sidebar-btn" id="sb-live-share">
+      <span class="icon">📡</span> <span class="sb-live-label">Share My Live Location</span>
+    </button>
+    <p style="font-size:11px; color:var(--text-muted); margin:2px 2px 0; line-height:1.5;">
+      Broadcasts your position live (as your team letter) so other teams can see where you are. Turns off automatically when you close the app.
+    </p>
   </div>
 
   <div class="sidebar-section">
@@ -1952,11 +2000,11 @@ const CHURCH_CONFIG = {
    Format: { id: 'unique-key', label: 'Display Name', color: '#hex' }
    ──────────────────────────────────────────────────────────── */
 const TEAMS = [
-  { id: 'team-a', label: 'Team A',   color: '#f59e0b' }, // amber
-  { id: 'team-b', label: 'Team B',   color: '#3b82f6' }, // blue
-  { id: 'team-c', label: 'Team C',   color: '#22c55e' }, // green
-  { id: 'team-d', label: 'Team D',   color: '#a855f7' }, // purple
-  { id: 'team-e', label: 'Team E',   color: '#ef4444' }, // red
+  { id: 'team-a', label: 'Team A',   color: '#f59e0b', letter: 'A' }, // amber
+  { id: 'team-b', label: 'Team B',   color: '#3b82f6', letter: 'B' }, // blue
+  { id: 'team-c', label: 'Team C',   color: '#22c55e', letter: 'C' }, // green
+  { id: 'team-d', label: 'Team D',   color: '#a855f7', letter: 'D' }, // purple
+  { id: 'team-e', label: 'Team E',   color: '#ef4444', letter: 'E' }, // red
 ];
 
 /* ─────────────────────────────────────────────────────────────
@@ -1969,6 +2017,7 @@ const OUTCOMES = [
   { id: 'followup',  emoji: '🔔', label: 'Follow-up needed' },
   { id: 'prayer',    emoji: '🙏', label: 'Prayer request' },
   { id: 'decision',  emoji: '🎉', label: 'Decision made!' },
+  { id: 'believer',  emoji: '🙌', label: 'Born-again believer' },
   { id: 'hostile',   emoji: '⚠️',  label: 'Not interested' },
   { id: 'custom',    emoji: '✏️',  label: 'Other (see notes)' },
 ];
@@ -1980,6 +2029,7 @@ const OUTCOMES = [
    ──────────────────────────────────────────────────────────── */
 const OUTCOME_COLORS = {
   'decision':  '#22c55e', // green
+  'believer':  '#14b8a6', // teal (already saved)
   'followup':  '#3b82f6', // blue
   'prayer':    '#3b82f6', // blue (same as followup — needs return visit)
   'tract':     '#eab308', // yellow
@@ -1989,9 +2039,16 @@ const OUTCOME_COLORS = {
   'custom':    '#a855f7', // purple
 };
 
+function isBeliever(notes) {
+  if (!notes) return false;
+  const n = notes.toLowerCase();
+  return n.includes('born-again') || n.includes('born again') || n.includes('believer');
+}
+
 function outcomeColor(notes) {
   if (!notes) return '#6b7280';
   const n = notes.toLowerCase();
+  if (isBeliever(n))               return OUTCOME_COLORS.believer;
   if (n.includes('decision'))      return OUTCOME_COLORS.decision;
   if (n.includes('follow-up') || n.includes('followup') || n.includes('follow up')) return OUTCOME_COLORS.followup;
   if (n.includes('prayer'))        return OUTCOME_COLORS.prayer;
@@ -2022,6 +2079,11 @@ const state = {
   markers:       {},          // { id: leafletMarker }
   beacons:       {},          // { teamId: beaconObj } — team location pins
   beaconMarkers: {},          // { teamId: leafletMarker }
+  live:          {},          // { userId: liveObj } — real-time team positions
+  liveMarkers:   {},          // { userId: leafletMarker }
+  liveShare:     false,       // am I broadcasting my live location?
+  lastLivePush:  0,           // throttle timestamp for live pushes
+  liveSweepId:   null,        // interval id for pruning stale live markers
   heatLayer:     null,
   heatVisible:   false,
   filterTeam:    'all',
@@ -2038,6 +2100,8 @@ const state = {
   mapTapPos:     null,        // { lat, lng } — position from map tap/long-press
   logPos:        null,        // { lat, lng, source } — position locked at modal open, immune to GPS updates
   beaconExpireMs: 2 * 60 * 60 * 1000, // beacons auto-expire after 2 hours
+  liveStaleMs:    5 * 60 * 1000,      // live markers disappear if not updated in 5 min
+  livePushMs:     15 * 1000,          // push my live position at most every 15 sec
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -2143,6 +2207,42 @@ function subscribeToVisits() {
     });
   });
 
+  // Subscribe to live team locations (real-time positions)
+  const liveRef = state.db.ref('live');
+  liveRef.on('value', snapshot => {
+    const now  = Date.now();
+    const data = snapshot.val() || {};
+
+    // Remove markers for anyone who dropped off or went stale
+    Object.keys(state.liveMarkers).forEach(userId => {
+      const l = data[userId];
+      if (!l || now - l.timestamp > state.liveStaleMs) {
+        removeLiveMarker(userId);
+      }
+    });
+
+    // Add/update fresh live markers
+    Object.entries(data).forEach(([userId, live]) => {
+      if (!live || now - live.timestamp > state.liveStaleMs) return; // stale
+      state.live[userId] = live;
+      updateLiveMarker(live);
+    });
+  });
+
+  // Periodically prune stale live markers even without a fresh snapshot,
+  // and re-push my own position so it never goes stale while I'm sharing.
+  if (!state.liveSweepId) {
+    state.liveSweepId = setInterval(() => {
+      sweepStaleLive();
+      if (state.liveShare) pushLivePosition(false);
+    }, 30 * 1000);
+  }
+
+  // Resume live sharing if it was on before the app was closed/reloaded
+  if (localStorage.getItem('sw_live_share') === '1') {
+    startLiveShare(true);
+  }
+
   // Connection state monitor
   firebase.database().ref('.info/connected').on('value', snap => {
     state.isOnline = snap.val() === true;
@@ -2191,6 +2291,16 @@ function teamLabel(teamId) {
   return t ? t.label : teamId;
 }
 
+// Single-letter badge for a team (used by live markers). Falls back to the
+// last word of the label, then the first character, so custom teams still work.
+function teamLetter(teamId) {
+  const t = TEAMS.find(t => t.id === teamId);
+  if (t && t.letter) return t.letter;
+  const label = (t ? t.label : teamId) || '?';
+  const word = label.trim().split(/\s+/).pop() || label;
+  return word.charAt(0).toUpperCase();
+}
+
 function createMarkerIcon(color) {
   return L.divIcon({
     className: '',
@@ -2201,18 +2311,34 @@ function createMarkerIcon(color) {
   });
 }
 
+// Born-again believers get a distinct teal cross badge so they stand out
+// from the sea of visit dots — regardless of the outcome/team color mode.
+function createBelieverIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div class="believer-marker" title="Born-again believer">✝</div>`,
+    iconSize:   [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor:[0, -14],
+  });
+}
+
 function visitPinColor(visit) {
   return state.colorMode === 'outcome'
     ? outcomeColor(visit.notes)
     : teamColor(visit.team);
 }
 
+function createVisitIcon(visit) {
+  if (isBeliever(visit.notes)) return createBelieverIcon();
+  return createMarkerIcon(visitPinColor(visit));
+}
+
 function addMarkerForVisit(visit) {
   if (state.markers[visit.id]) return; // already on map
 
-  const color = visitPinColor(visit);
   const marker = L.marker([visit.lat, visit.lng], {
-    icon: createMarkerIcon(color),
+    icon: createVisitIcon(visit),
   });
 
   const ts   = new Date(visit.timestamp);
@@ -2348,6 +2474,136 @@ window.removeBeacon = function(teamId) {
 };
 
 /* ══════════════════════════════════════════════════════════════
+   LIVE TEAM LOCATION — real-time "where is everyone right now?"
+   Each broadcasting device writes live/{userId} and keeps it fresh.
+   Markers show the team letter (A, B, C…) so they stand out from the
+   visit dots. Stale entries (no update in 5 min) are pruned.
+   ══════════════════════════════════════════════════════════════ */
+function createLiveIcon(color, letter, isMe) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="live-marker${isMe ? ' is-me' : ''}" style="background:${color};">
+             <div class="live-pulse" style="border-color:${color};"></div>
+             ${escHtml(letter)}
+           </div>`,
+    iconSize:   [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor:[0, -20],
+  });
+}
+
+function updateLiveMarker(live) {
+  if (!live || typeof live.lat !== 'number' || typeof live.lng !== 'number') return;
+
+  const color  = teamColor(live.team);
+  const letter = teamLetter(live.team);
+  const isMe   = live.userId === state.userId;
+  const time   = new Date(live.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  if (state.liveMarkers[live.userId]) {
+    // Move the existing marker rather than recreating it (smoother updates)
+    const m = state.liveMarkers[live.userId];
+    m.setLatLng([live.lat, live.lng]);
+    m.setIcon(createLiveIcon(color, letter, isMe));
+  } else {
+    const marker = L.marker([live.lat, live.lng], {
+      icon: createLiveIcon(color, letter, isMe),
+      zIndexOffset: 1500, // above beacons and visit dots
+    });
+    marker.addTo(map);
+    state.liveMarkers[live.userId] = marker;
+  }
+
+  state.liveMarkers[live.userId].bindPopup(`
+    <div class="popup-wrap">
+      <span class="popup-team" style="background:${color}22;color:${color};">
+        📡 ${escHtml(teamLabel(live.team))}${isMe ? ' (you)' : ''} — live
+      </span>
+      <div class="popup-meta" style="margin-top:6px;">🕐 Updated ${time}</div>
+    </div>
+  `);
+}
+
+function removeLiveMarker(userId) {
+  if (state.liveMarkers[userId]) {
+    map.removeLayer(state.liveMarkers[userId]);
+    delete state.liveMarkers[userId];
+  }
+  delete state.live[userId];
+}
+
+// Drop any live markers whose last update is older than the stale window.
+function sweepStaleLive() {
+  const now = Date.now();
+  Object.keys(state.live).forEach(userId => {
+    const live = state.live[userId];
+    if (!live || now - live.timestamp > state.liveStaleMs) {
+      removeLiveMarker(userId);
+    }
+  });
+}
+
+// Push my current position to Firebase (throttled). Called from the GPS watch.
+function pushLivePosition(force) {
+  if (!state.liveShare || !state.currentPos) return;
+  if (!state.db || !state.isOnline || !state.userId) return;
+
+  const now = Date.now();
+  if (!force && now - state.lastLivePush < state.livePushMs) return;
+  state.lastLivePush = now;
+
+  const live = {
+    team:      document.getElementById('team-select').value,
+    lat:       state.currentPos.lat,
+    lng:       state.currentPos.lng,
+    timestamp: now,
+    userId:    state.userId,
+  };
+  state.db.ref(`live/${state.userId}`).set(live).catch(() => {});
+}
+
+function startLiveShare(silent) {
+  if (!state.db || !state.userId) {
+    if (!silent) toast('Live location needs a connection — try again once online', 'error');
+    return;
+  }
+  state.liveShare = true;
+  localStorage.setItem('sw_live_share', '1');
+
+  // Auto-remove my marker if the app closes or the network drops
+  state.db.ref(`live/${state.userId}`).onDisconnect().remove();
+
+  pushLivePosition(true);
+  updateLiveShareUI();
+  if (!silent) toast('📡 Sharing your live location with all teams', 'success');
+}
+
+function stopLiveShare() {
+  state.liveShare = false;
+  localStorage.setItem('sw_live_share', '0');
+
+  if (state.db && state.userId) {
+    state.db.ref(`live/${state.userId}`).onDisconnect().cancel();
+    state.db.ref(`live/${state.userId}`).remove().catch(() => {});
+  }
+  updateLiveShareUI();
+  toast('Live location sharing off');
+}
+
+function toggleLiveShare() {
+  if (state.liveShare) stopLiveShare();
+  else                 startLiveShare();
+}
+
+function updateLiveShareUI() {
+  const btn = document.getElementById('sb-live-share');
+  if (!btn) return;
+  btn.classList.toggle('active', state.liveShare);
+  btn.querySelector('.sb-live-label').textContent =
+    state.liveShare ? 'Stop Sharing My Location' : 'Share My Live Location';
+}
+
+/* ══════════════════════════════════════════════════════════════
    HEATMAP
    ══════════════════════════════════════════════════════════════ */
 function refreshHeatmap() {
@@ -2477,6 +2733,9 @@ function startGPS() {
       if (isFirstFix && map) {
         map.setView([state.currentPos.lat, state.currentPos.lng], 16, { animate: true });
       }
+
+      // Broadcast my position if live-sharing is on (throttled internally)
+      pushLivePosition(isFirstFix);
 
       // Update coord preview if log modal is open
       const preview = document.getElementById('coord-preview');
@@ -2900,6 +3159,8 @@ function buildTeamSelector() {
 
   sel.addEventListener('change', () => {
     localStorage.setItem('sw_last_team', sel.value);
+    // If I'm broadcasting, update my live marker to the new team letter/color
+    if (state.liveShare) pushLivePosition(true);
   });
 }
 
@@ -3014,6 +3275,7 @@ function wireEvents() {
   document.getElementById('sidebar-overlay').onclick = closeSidebar;
 
   // Sidebar buttons
+  document.getElementById('sb-live-share').onclick  = () => { toggleLiveShare(); closeSidebar(); };
   document.getElementById('sb-view-visits').onclick = openVisitsList;
   document.getElementById('sb-export').onclick      = () => { exportData(); closeSidebar(); };
   document.getElementById('sb-import').onclick      = () => {
@@ -3194,8 +3456,7 @@ function toggleColorMode() {
     const visit = state.visits[id];
     if (!visit) return;
     const marker = state.markers[id];
-    const newColor = visitPinColor(visit);
-    marker.setIcon(createMarkerIcon(newColor));
+    marker.setIcon(createVisitIcon(visit));
   });
 }
 

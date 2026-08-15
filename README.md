@@ -14,6 +14,8 @@ and see at a glance where your teams have been.
 - 🗺️ **Real-time map** showing all team visits across all devices
 - 🌡️ **Heatmap layer** revealing coverage density at a glance
 - 👥 **Multi-team support** with color-coded markers per team
+- 📡 **Live team location** — broadcast where you are in real time as your team letter (A, B, C…) so teams can find each other at a glance
+- 🙌 **Born-again believer marker** — flag homes of existing believers with a distinct teal cross so they stand out from visit dots
 - 🔍 **Filter by team** using the chip bar on the map
 - 📊 **Stats bar** — total visits, today's count, per-team breakdown
 - 📴 **Full offline mode** — visits are queued and auto-synced when back online
@@ -76,6 +78,14 @@ In Realtime Database → **Rules** tab, replace everything with:
       ".read": "auth != null",
       ".write": "auth != null"
     },
+    "beacons": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "live": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "congregation": {
       ".read": "auth != null",
       ".write": "auth != null"
@@ -83,6 +93,8 @@ In Realtime Database → **Rules** tab, replace everything with:
   }
 }
 ```
+
+The `beacons` and `live` nodes power the team-location features (dropped beacons and real-time live location). If you set these rules up before those features existed, add the two blocks above and re-publish.
 
 Click **Publish**. This means only your app's authenticated users (anonymous sign-in counts) can read or write data — random people on the internet cannot.
 

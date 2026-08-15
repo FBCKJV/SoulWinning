@@ -473,6 +473,7 @@
         <select id="timeline-outcome" class="search-box" style="flex:0 0 auto;width:auto;">
           <option value="all">All Outcomes</option>
           <option value="decision">Decision</option>
+          <option value="believer">Born-again believer</option>
           <option value="followup">Follow-up</option>
           <option value="prayer">Prayer Request</option>
           <option value="gospel">Gospel Shared</option>
@@ -527,6 +528,7 @@
         <div id="print-map"></div>
         <div class="legend-row">
           <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>Decision</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#14b8a6;"></div>Born-again believer</div>
           <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div>Follow-up/Prayer</div>
           <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>Gospel Shared</div>
           <div class="legend-item"><div class="legend-dot" style="background:#eab308;"></div>Tract Left</div>
@@ -597,6 +599,7 @@ const TEAMS = [
 
 const OUTCOME_COLORS = {
   decision: '#22c55e',
+  believer: '#14b8a6',
   followup: '#3b82f6',
   prayer:   '#3b82f6',
   tract:    '#eab308',
@@ -605,6 +608,12 @@ const OUTCOME_COLORS = {
   nothome:  '#6b7280',
   custom:   '#a855f7',
 };
+
+function isBeliever(notes) {
+  if (!notes) return false;
+  const n = notes.toLowerCase();
+  return n.includes('born-again') || n.includes('born again') || n.includes('believer');
+}
 
 /* ── Firebase config — read from localStorage (set in main app) or fallback ── */
 function getFirebaseConfig() {
@@ -652,6 +661,7 @@ function teamColor(id) {
 function outcomeColor(notes) {
   if (!notes) return OUTCOME_COLORS.nothome;
   const n = notes.toLowerCase();
+  if (isBeliever(n))             return OUTCOME_COLORS.believer;
   if (n.includes('decision'))    return OUTCOME_COLORS.decision;
   if (n.includes('follow-up') || n.includes('followup') || n.includes('follow up')) return OUTCOME_COLORS.followup;
   if (n.includes('prayer'))      return OUTCOME_COLORS.prayer;
@@ -665,6 +675,7 @@ function outcomeColor(notes) {
 function outcomeLabel(notes) {
   if (!notes) return 'Visit logged';
   const n = notes.toLowerCase();
+  if (isBeliever(n))             return 'Born-again believer';
   if (n.includes('decision'))    return 'Decision made!';
   if (n.includes('follow-up') || n.includes('followup') || n.includes('follow up')) return 'Follow-up needed';
   if (n.includes('prayer'))      return 'Prayer request';
@@ -803,14 +814,15 @@ function renderStats() {
 function renderOutcomeChart() {
   const counts = {};
   const labels = {
-    decision:'Decision', followup:'Follow-up', prayer:'Prayer',
+    decision:'Decision', believer:'Born-again believer', followup:'Follow-up', prayer:'Prayer',
     gospel:'Gospel', tract:'Tract', nothome:'Not Home',
     hostile:'Not Interested', custom:'Other'
   };
   visits.forEach(v => {
     const n = (v.notes||'').toLowerCase();
     let key = 'custom';
-    if (n.includes('decision'))  key='decision';
+    if (isBeliever(n))           key='believer';
+    else if (n.includes('decision'))  key='decision';
     else if (n.includes('follow-up')||n.includes('followup')) key='followup';
     else if (n.includes('prayer'))   key='prayer';
     else if (n.includes('gospel'))   key='gospel';
@@ -903,6 +915,7 @@ function renderTimeline(filter='', teamFilter='all', outcomeFilter='all') {
     filtered = filtered.filter(v => {
       const n = (v.notes||'').toLowerCase();
       if (outcomeFilter==='decision')  return n.includes('decision');
+      if (outcomeFilter==='believer')  return isBeliever(n);
       if (outcomeFilter==='followup')  return n.includes('follow-up')||n.includes('followup');
       if (outcomeFilter==='prayer')    return n.includes('prayer');
       if (outcomeFilter==='gospel')    return n.includes('gospel');

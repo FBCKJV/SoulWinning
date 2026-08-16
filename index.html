@@ -2103,8 +2103,10 @@ const state = {
   live:          {},          // { userId: liveObj } — real-time team positions
   liveMarkers:   {},          // { userId: leafletMarker }
   liveShare:     false,       // am I broadcasting my live location?
+  liveWaiting:   false,       // sharing on but still waiting for a GPS fix
   lastLivePush:  0,           // throttle timestamp for live pushes
   liveSweepId:   null,        // interval id for pruning stale live markers
+  serverTimeOffset: 0,        // Firebase serverTime - localTime (ms); fixes clock skew
   meMarker:      null,        // always-on "you are here" dot (local, no Firebase)
   meAccuracy:    null,        // accuracy circle around my position
   heatLayer:     null,
@@ -2230,10 +2232,16 @@ function subscribeToVisits() {
     });
   });
 
+  // Track the server/local clock difference so live freshness doesn't depend
+  // on each phone's clock being correct (two devices can disagree by minutes).
+  state.db.ref('.info/serverTimeOffset').on('value', snap => {
+    state.serverTimeOffset = snap.val() || 0;
+  });
+
   // Subscribe to live team locations (real-time positions)
   const liveRef = state.db.ref('live');
   liveRef.on('value', snapshot => {
-    const now  = Date.now();
+    const now  = serverNow();
     const data = snapshot.val() || {};
 
     // Remove markers for anyone who dropped off or went stale
@@ -2559,9 +2567,14 @@ function removeLiveMarker(userId) {
   delete state.live[userId];
 }
 
+// Current time on the Firebase server's clock (corrects for a wrong device clock).
+function serverNow() {
+  return Date.now() + (state.serverTimeOffset || 0);
+}
+
 // Drop any live markers whose last update is older than the stale window.
 function sweepStaleLive() {
-  const now = Date.now();
+  const now = serverNow();
   Object.keys(state.live).forEach(userId => {
     const live = state.live[userId];
     if (!live || now - live.timestamp > state.liveStaleMs) {
@@ -2583,7 +2596,8 @@ function pushLivePosition(force) {
     team:      document.getElementById('team-select').value,
     lat:       state.currentPos.lat,
     lng:       state.currentPos.lng,
-    timestamp: now,
+    // Server clock, so receivers judge freshness against the same clock I do
+    timestamp: firebase.database.ServerValue.TIMESTAMP,
     userId:    state.userId,
   };
   state.db.ref(`live/${state.userId}`).set(live).catch(() => {});
@@ -2595,6 +2609,7 @@ function startLiveShare(silent) {
     return;
   }
   state.liveShare = true;
+  state.liveWaiting = !state.currentPos; // no fix yet? we're waiting
   localStorage.setItem('sw_live_share', '1');
 
   // Auto-remove my marker if the app closes or the network drops
@@ -2602,11 +2617,16 @@ function startLiveShare(silent) {
 
   pushLivePosition(true);
   updateLiveShareUI();
-  if (!silent) toast('📡 Sharing your live location with all teams', 'success');
+  if (!silent) {
+    toast(state.currentPos
+      ? '📡 Sharing your live location with all teams'
+      : '📡 Sharing on — waiting for GPS before your location goes out', 'success');
+  }
 }
 
 function stopLiveShare() {
   state.liveShare = false;
+  state.liveWaiting = false;
   localStorage.setItem('sw_live_share', '0');
 
   if (state.db && state.userId) {
@@ -2626,8 +2646,11 @@ function updateLiveShareUI() {
   const btn = document.getElementById('sb-live-share');
   if (!btn) return;
   btn.classList.toggle('active', state.liveShare);
-  btn.querySelector('.sb-live-label').textContent =
-    state.liveShare ? 'Stop Sharing My Location' : 'Share My Live Location';
+  let label = 'Share My Live Location';
+  if (state.liveShare) {
+    label = state.liveWaiting ? 'Waiting for GPS…' : 'Stop Sharing My Location';
+  }
+  btn.querySelector('.sb-live-label').textContent = label;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2802,7 +2825,13 @@ function startGPS() {
         map.setView([state.currentPos.lat, state.currentPos.lng], 16, { animate: true });
       }
 
-      // Broadcast my position if live-sharing is on (throttled internally)
+      // Broadcast my position if live-sharing is on (throttled internally).
+      // If we were waiting for a fix, announce that sharing is now live.
+      if (state.liveShare && state.liveWaiting) {
+        state.liveWaiting = false;
+        updateLiveShareUI();
+        toast('📡 GPS locked — your live location is now sharing', 'success');
+      }
       pushLivePosition(isFirstFix);
 
       // Update coord preview if log modal is open

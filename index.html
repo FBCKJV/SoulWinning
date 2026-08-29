@@ -2295,18 +2295,27 @@ function initMap() {
     attributionControl: true,
   });
 
-  // Dark CartoDB tiles — no API key needed
-  L.tileLayer(
-    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    {
-      attribution: '© <a href="https://www.openstreetmap.org/">OSM</a> © <a href="https://carto.com/">CARTO</a>',
-      subdomains:  'abcd',
-      maxZoom:     19,
-    }
-  ).addTo(map);
+  // Esri gray basemap — no API key required (CARTO now demands one)
+  baseTileLayer(document.body.classList.contains('light-mode')).addTo(map);
 
   // Position zoom controls bottom-right (away from FAB)
   map.zoomControl.setPosition('bottomright');
+}
+
+/* Basemap tiles. Esri light/dark "gray canvas" — keyless, clean, and it
+   keeps the day/night toggle. Esri's gray tiles are cached to zoom 16, so
+   maxNativeZoom lets Leaflet upscale (slightly soft) past that instead of
+   showing blank tiles when you pinch in to house level. */
+function baseTileLayer(isLight) {
+  const which = isLight ? 'World_Light_Gray_Base' : 'World_Dark_Gray_Base';
+  return L.tileLayer(
+    `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${which}/MapServer/tile/{z}/{y}/{x}`,
+    {
+      attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+      maxZoom:       19,
+      maxNativeZoom: 16,
+    }
+  );
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3577,15 +3586,7 @@ function applyTheme(mode) {
   // Swap map tiles to match — light tiles in day, dark at night
   if (map) {
     map.eachLayer(layer => { if (layer._url) map.removeLayer(layer); });
-    L.tileLayer(
-      isLight
-        ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      {
-        attribution: '© <a href="https://www.openstreetmap.org/">OSM</a> © <a href="https://carto.com/">CARTO</a>',
-        subdomains: 'abcd', maxZoom: 19,
-      }
-    ).addTo(map);
+    baseTileLayer(isLight).addTo(map);
   }
 }
 

@@ -1603,7 +1603,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <span class="church-name" id="display-church-name">Soul Winner</span>
       </div>
       <select id="team-select"></select>
-      <button id="btn-theme" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">☀️</button>
       <button id="btn-menu" aria-label="Menu" title="Menu">☰</button>
     </div>
     <!-- Row 2: address search + filter -->
@@ -2295,25 +2294,21 @@ function initMap() {
     attributionControl: true,
   });
 
-  // Esri gray basemap — no API key required (CARTO now demands one)
-  baseTileLayer(document.body.classList.contains('light-mode')).addTo(map);
+  // OpenStreetMap standard tiles — no API key required, and crisp all the
+  // way down to house level (unlike Esri's gray tiles, which blur past z16).
+  baseTileLayer().addTo(map);
 
   // Position zoom controls bottom-right (away from FAB)
   map.zoomControl.setPosition('bottomright');
 }
 
-/* Basemap tiles. Esri light/dark "gray canvas" — keyless, clean, and it
-   keeps the day/night toggle. Esri's gray tiles are cached to zoom 16, so
-   maxNativeZoom lets Leaflet upscale (slightly soft) past that instead of
-   showing blank tiles when you pinch in to house level. */
-function baseTileLayer(isLight) {
-  const which = isLight ? 'World_Light_Gray_Base' : 'World_Dark_Gray_Base';
+function baseTileLayer() {
   return L.tileLayer(
-    `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${which}/MapServer/tile/{z}/{y}/{x}`,
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     {
-      attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
-      maxZoom:       19,
-      maxNativeZoom: 16,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      subdomains: 'abc',
+      maxZoom:    19,
     }
   );
 }
@@ -3353,7 +3348,6 @@ function wireEvents() {
 
   // FAB buttons
   document.getElementById('btn-log').onclick    = openLogModal;
-  document.getElementById('btn-theme').onclick     = toggleTheme;
   document.getElementById('btn-colormode').onclick = toggleColorMode;
   document.getElementById('btn-heat').onclick   = toggleHeatmap;
   document.getElementById('btn-center').onclick = () => {
@@ -3567,31 +3561,10 @@ function toggleColorMode() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LIGHT / DARK MODE TOGGLE
+   THEME — locked to light (pairs with the OpenStreetMap basemap)
    ══════════════════════════════════════════════════════════════ */
 function initTheme() {
-  // Called after initMap() so the tile swap can actually run
-  const saved = localStorage.getItem('sw_theme') || 'dark';
-  applyTheme(saved);
-}
-
-function applyTheme(mode) {
-  const isLight = mode === 'light';
-  document.body.classList.toggle('light-mode', isLight);
-  localStorage.setItem('sw_theme', isLight ? 'light' : 'dark');
-
-  const btn = document.getElementById('btn-theme');
-  if (btn) btn.textContent = isLight ? '🌙' : '☀️';
-
-  // Swap map tiles to match — light tiles in day, dark at night
-  if (map) {
-    map.eachLayer(layer => { if (layer._url) map.removeLayer(layer); });
-    baseTileLayer(isLight).addTo(map);
-  }
-}
-
-function toggleTheme() {
-  applyTheme(document.body.classList.contains('light-mode') ? 'dark' : 'light');
+  document.body.classList.add('light-mode');
 }
 
 /* ══════════════════════════════════════════════════════════════

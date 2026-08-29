@@ -21,7 +21,7 @@ and see at a glance where your teams have been.
 - 📊 **Stats bar** — total visits, today's count, per-team breakdown
 - 📴 **Full offline mode** — visits are queued and auto-synced when back online
 - 📤 **JSON export/import** for backup and cross-device data
-- 🌙 **Dark theme** — easy to read at night on a doorstep
+- 🗺️ **OpenStreetMap basemap** — free, no API key, and stays crisp down to house level
 - 📲 **Installable PWA** — add to home screen, works like a native app
 
 ---

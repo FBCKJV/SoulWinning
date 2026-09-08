@@ -4,7 +4,7 @@ A free, open-source Progressive Web App for church soul-winning teams.
 Track door-to-door visits on a live map, sync across all team devices in real time,
 and see at a glance where your teams have been.
 
-![Soul Winner App Screenshot](https://via.placeholder.com/800x450/0f1724/f59e0b?text=Soul+Winner+PWA)
+![Soul Winner App Screenshot](https://placehold.co/800x450/0f1724/f59e0b?text=Soul+Winner+PWA)
 
 ---
 

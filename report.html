@@ -197,6 +197,10 @@
       border-radius: 10px; font-size: 10px; font-weight: 700;
       margin-right: 6px;
     }
+    .visit-loc {
+      color: var(--blue); text-decoration: none; white-space: nowrap;
+    }
+    .visit-loc:hover { text-decoration: underline; }
     .visit-actions { display: flex; gap: 6px; margin-top: 8px; }
     .visit-act-btn {
       padding: 3px 10px; border-radius: 4px; border: none;
@@ -648,6 +652,62 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* ── Reverse geocoding (shared queue, 1 request/sec for Nominatim) ── */
+try { geocodeCache = JSON.parse(localStorage.getItem('sw_geocache')) || {}; } catch(e) {}
+let geoChain   = Promise.resolve();
+const geoPending = {}; // key -> promise
+
+function geoKey(v) { return `${v.lat.toFixed(4)}_${v.lng.toFixed(4)}`; }
+
+function lookupAddress(v) {
+  const key = geoKey(v);
+  if (geocodeCache[key]) return Promise.resolve(geocodeCache[key]);
+  if (geoPending[key]) return geoPending[key];
+  geoChain = geoChain.then(async () => {
+    try {
+      const res  = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${v.lat}&lon=${v.lng}&zoom=17`,
+        { headers: {'Accept-Language':'en'} }
+      );
+      const data = await res.json();
+      const addr = data.address || {};
+      geocodeCache[key] = [
+        addr.house_number,
+        addr.road || addr.pedestrian || addr.path,
+      ].filter(Boolean).join(' ') || data.display_name?.split(',')[0] || 'Unknown road';
+      try { localStorage.setItem('sw_geocache', JSON.stringify(geocodeCache)); } catch(e) {}
+    } catch(e) { /* leave uncached so it's retried later */ }
+    await new Promise(r => setTimeout(r, 1100)); // respect rate limit
+  });
+  geoPending[key] = geoChain.then(() => {
+    delete geoPending[key];
+    return geocodeCache[key];
+  });
+  return geoPending[key];
+}
+
+// Approximate address (or coords until looked up) that opens the spot in Maps
+function locHtml(v) {
+  const key  = geoKey(v);
+  const addr = geocodeCache[key];
+  const url  = `https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`;
+  const text = addr ? `≈ ${escHtml(addr)}` : `${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}`;
+  return `<a class="visit-loc" data-geokey="${key}" href="${url}" target="_blank" rel="noopener">📍 ${text}</a>`;
+}
+
+// Look up addresses for cards in the background and update them as they arrive
+function fillAddresses(list) {
+  list.forEach(v => {
+    const key = geoKey(v);
+    if (geocodeCache[key]) return;
+    lookupAddress(v).then(addr => {
+      if (!addr) return;
+      document.querySelectorAll(`.visit-loc[data-geokey="${key}"]`)
+        .forEach(a => { a.textContent = `📍 ≈ ${addr}`; });
+    });
+  });
+}
+
 function teamLabel(id) {
   const t = TEAMS.find(t => t.id === id);
   return t ? t.label : id;
@@ -938,7 +998,8 @@ function renderTimeline(filter='', teamFilter='all', outcomeFilter='all') {
     return;
   }
 
-  list.innerHTML = filtered.slice(0, 200).map(v => {
+  const shown = filtered.slice(0, 200);
+  list.innerHTML = shown.map(v => {
     const oc = outcomeColor(v.notes);
     const tc = teamColor(v.team);
     return `<div class="visit-card">
@@ -949,7 +1010,7 @@ function renderTimeline(filter='', teamFilter='all', outcomeFilter='all') {
         <div class="visit-meta">
           <span class="team-badge" style="background:${tc}22;color:${tc};">${teamLabel(v.team)}</span>
           ${formatDateTime(v.timestamp)}
-          · ${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}
+          · ${locHtml(v)}
         </div>
         <div class="visit-actions">
           <button class="visit-act-btn btn-edit" onclick="openEdit('${v.id}')">✏️ Edit</button>
@@ -958,6 +1019,7 @@ function renderTimeline(filter='', teamFilter='all', outcomeFilter='all') {
       </div>
     </div>`;
   }).join('');
+  fillAddresses(shown);
 }
 
 /* ── Populate team filter selects ───────────────────────────── */
@@ -990,32 +1052,12 @@ async function renderStreets(filter='') {
     status.style.display = 'block';
     status.textContent = `Looking up ${toGeocode.length} addresses… (may take a moment)`;
 
-    // Rate-limited queue: 1 request per second (Nominatim limit)
-    for (let i = 0; i < Math.min(toGeocode.length, 100); i++) {
-      const v = toGeocode[i];
-      const key = `${v.lat.toFixed(4)}_${v.lng.toFixed(4)}`;
-      if (!geocodeCache[key]) {
-        try {
-          const res  = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${v.lat}&lon=${v.lng}&zoom=17`,
-            { headers: {'Accept-Language':'en'} }
-          );
-          const data = await res.json();
-          const addr = data.address || {};
-          geocodeCache[key] = [
-            addr.house_number,
-            addr.road || addr.pedestrian || addr.path,
-          ].filter(Boolean).join(' ') || data.display_name?.split(',')[0] || 'Unknown road';
-        } catch(e) {
-          geocodeCache[key] = `${v.lat.toFixed(3)}, ${v.lng.toFixed(3)}`;
-        }
-        status.textContent = `Looking up addresses… ${i+1}/${Math.min(toGeocode.length,100)}`;
-        await new Promise(r => setTimeout(r, 1100)); // respect rate limit
-      }
+    const batch = toGeocode.slice(0, 100);
+    for (let i = 0; i < batch.length; i++) {
+      await lookupAddress(batch[i]);
+      status.textContent = `Looking up addresses… ${i+1}/${batch.length}`;
     }
 
-    // Save cache to localStorage
-    try { localStorage.setItem('sw_geocache', JSON.stringify(geocodeCache)); } catch(e) {}
     status.style.display = 'none';
   }
 
@@ -1115,7 +1157,7 @@ function renderFollowups() {
       <div class="visit-meta">
         <span class="team-badge" style="background:${tc}22;color:${tc};">${teamLabel(v.team)}</span>
         ${formatDateTime(v.timestamp)} · ${daysSince(v.timestamp)}d ago
-        · ${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}
+        · ${locHtml(v)}
       </div>
       <div class="visit-actions" style="margin-top:8px;">
         <button class="visit-act-btn btn-edit" onclick="openEdit('${v.id}')">✏️ Edit</button>
@@ -1123,6 +1165,7 @@ function renderFollowups() {
       </div>
     </div>`;
   }).join('');
+  fillAddresses(fu);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1277,11 +1320,6 @@ function switchTab(tab) {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
   });
   if (tab === 'streets') {
-    // Load geocache from localStorage
-    try {
-      const cached = localStorage.getItem('sw_geocache');
-      if (cached) geocodeCache = JSON.parse(cached);
-    } catch(e) {}
     renderStreets(document.getElementById('street-search').value);
   }
   if (tab === 'map') {

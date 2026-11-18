@@ -4,7 +4,8 @@
 The root index.html / report.html carry one church's Firebase config so its
 live GitHub Pages site works. Anyone else must NOT use those files as-is, or
 their visits would land in that church's database. This script copies the app
-into generic/ with the Firebase config blanked out, and zips it as
+into generic/ with the Firebase config blanked out, adds CLAUDE.md (the setup
+guide from tools/generic-CLAUDE.md), and zips it as
 soul-winner-generic.zip for one-click download.
 
 Run it after changing the app:   python3 tools/make_generic.py
@@ -60,6 +61,9 @@ def main():
 
     for name in COPY_AS_IS:
         shutil.copy2(ROOT / name, OUT / name)
+
+    # Setup guide a church hands to Claude (Claude Code reads CLAUDE.md automatically)
+    shutil.copy2(ROOT / "tools" / "generic-CLAUDE.md", OUT / "CLAUDE.md")
 
     # Safety check: no real-looking Firebase values may survive
     for f in OUT.glob("*.html"):

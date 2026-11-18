@@ -15,7 +15,7 @@ and see at a glance where your teams have been.
   <sub>A mock Saturday trip: 3 teams, 100 doors, 10 salvations. More screenshots in <a href="docs/demo/">docs/demo</a>.</sub>
 </p>
 
-> **Setting this up for your church?** Download **[soul-winner-generic.zip](soul-winner-generic.zip)** (click it, then the download button) and follow the [Quick Setup](#quick-setup-15-minutes) below.
+> **Setting this up for your church?** Download **[soul-winner-generic.zip](soul-winner-generic.zip)** (click it, then the download button). It includes a `CLAUDE.md` guide: give it to Claude and it will walk you through the whole setup. Or follow the [Quick Setup](#quick-setup-15-minutes) below yourself.
 > Don't use the `index.html` / `report.html` in the top folder of this repo: they're connected to our church's database.
 
 ---
@@ -46,12 +46,15 @@ Download **[soul-winner-generic.zip](soul-winner-generic.zip)** (click it, then 
 
 ```
 soul-winner/
+├── CLAUDE.md       ← setup guide: hand this to Claude
 ├── index.html      ← the app
 ├── report.html     ← reports & follow-up lists
 ├── sw.js           ← offline support
 ├── manifest.json   ← lets phones install it
 └── icon-*.png, apple-touch-icon.png
 ```
+
+> 🤖 **Easiest way: let Claude walk you through it.** Open the `soul-winner` folder in [Claude Code](https://claude.com/claude-code) and say *"help me set this up"*, or attach `CLAUDE.md` to a chat at [claude.ai](https://claude.ai). Claude takes you through Firebase, your church's settings and putting the app online, one step at a time. The steps below are the same process if you'd rather do it yourself.
 
 The same files are also in the [`generic/`](generic/) folder of this repo.
 
@@ -249,6 +252,7 @@ SoulWinning/
 ├── generic/                  ← Same app with the Firebase config blanked: start here
 ├── soul-winner-generic.zip   ← generic/ zipped for one-click download
 ├── tools/make_generic.py     ← Rebuilds generic/ and the zip
+├── tools/generic-CLAUDE.md   ← Source of the CLAUDE.md setup guide in the download
 ├── docs/demo/                ← Demo video and screenshots
 └── README.md                 ← This file
 ```

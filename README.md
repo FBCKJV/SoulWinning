@@ -4,7 +4,19 @@ A free, open-source Progressive Web App for church soul-winning teams.
 Track door-to-door visits on a live map, sync across all team devices in real time,
 and see at a glance where your teams have been.
 
-![Soul Winner App Screenshot](https://placehold.co/800x450/0f1724/f59e0b?text=Soul+Winner+PWA)
+<p align="center">
+  <a href="docs/demo/soulwinner-demo.mp4">
+    <img src="docs/demo/demo-preview.gif" width="300" alt="Soul Winner in use: tapping visit pins, then logging a salvation at the door">
+  </a>
+</p>
+
+<p align="center">
+  <b><a href="docs/demo/soulwinner-demo.mp4">▶ Watch the full demo video (75 sec)</a></b><br>
+  <sub>A mock Saturday trip: 3 teams, 100 doors, 10 salvations. More screenshots in <a href="docs/demo/">docs/demo</a>.</sub>
+</p>
+
+> **Setting this up for your church?** Download **[soul-winner-generic.zip](soul-winner-generic.zip)** (click it, then the download button) and follow the [Quick Setup](#quick-setup-15-minutes) below.
+> Don't use the `index.html` / `report.html` in the top folder of this repo: they're connected to our church's database.
 
 ---
 
@@ -30,12 +42,20 @@ and see at a glance where your teams have been.
 
 ### Step 1 — Get the Files
 
-Download or clone this repository:
-```bash
-git clone https://github.com/YOURUSERNAME/church-soulwinner.git
+Download **[soul-winner-generic.zip](soul-winner-generic.zip)** (click it, then the download button) and unzip it. You'll get a `soul-winner` folder with everything you need:
+
+```
+soul-winner/
+├── index.html      ← the app
+├── report.html     ← reports & follow-up lists
+├── sw.js           ← offline support
+├── manifest.json   ← lets phones install it
+└── icon-*.png, apple-touch-icon.png
 ```
 
-Or just download `index.html`, `sw.js`, and `manifest.json`.
+The same files are also in the [`generic/`](generic/) folder of this repo.
+
+> ⚠️ Use the **generic** files, not the `index.html` / `report.html` in the top folder of this repo. Those are wired to our church's Firebase database, and your visits would end up there.
 
 ---
 
@@ -126,6 +146,8 @@ const FIREBASE_CONFIG_DEFAULT = {
 };
 ```
 
+Then do the same in `report.html`: search for `Fallback` and fill in the same five values. (The report page also picks up the config from the main app on the same phone, but filling it in here makes it work everywhere.)
+
 **Option B — Use the in-app config editor** (no code editing):
 
 Open the app → tap ☰ → **Firebase Setup** → paste your values → Save & Connect.
@@ -171,7 +193,7 @@ const OUTCOMES = [
 ### Step 9 — Deploy to GitHub Pages
 
 1. Create a new GitHub repository (e.g. `church-soulwinner`)
-2. Upload your three files: `index.html`, `sw.js`, `manifest.json`
+2. Upload everything from the `soul-winner` folder: `index.html`, `report.html`, `sw.js`, `manifest.json` and the icon images
 3. Go to **Settings → Pages**
 4. Source: **"Deploy from a branch"** → Branch: `main` → Folder: `/ (root)`
 5. Click Save — your app will be live at:
@@ -207,7 +229,7 @@ Each church needs their own Firebase project (Steps 2–6 above). The free Fireb
 
 Steps for another church:
 1. Create their own Firebase project
-2. Download the same `index.html` / `sw.js` / `manifest.json`
+2. Download [soul-winner-generic.zip](soul-winner-generic.zip) (not the top-level files, which hold our config)
 3. Add their own Firebase config (Step 7, Option A or B)
 4. Change `CHURCH_CONFIG.defaultCenter` to their town
 5. Deploy to their own GitHub Pages or any static host
@@ -219,12 +241,19 @@ Their data stays completely separate from yours.
 ## File Structure
 
 ```
-church-soulwinner/
-├── index.html     ← The entire app (map, UI, logic)
-├── sw.js          ← Service worker (offline + tile caching)
-├── manifest.json  ← PWA install manifest
-└── README.md      ← This file
+SoulWinning/
+├── index.html                ← The live app for our church (has our Firebase config)
+├── report.html               ← Reports page for our church (has our Firebase config)
+├── sw.js                     ← Service worker (offline + tile caching)
+├── manifest.json             ← PWA install manifest
+├── generic/                  ← Same app with the Firebase config blanked: start here
+├── soul-winner-generic.zip   ← generic/ zipped for one-click download
+├── tools/make_generic.py     ← Rebuilds generic/ and the zip
+├── docs/demo/                ← Demo video and screenshots
+└── README.md                 ← This file
 ```
+
+**For maintainers:** after changing `index.html` or `report.html`, run `python3 tools/make_generic.py` and commit the updated `generic/` folder and zip, so the download stays current. The script stops with an error if a real Firebase key or database URL would end up in the generic copy.
 
 ---
 

@@ -140,6 +140,7 @@
     /* ── Tabs ────────────────────────────────────────────────── */
     #tab-bar {
       display: flex; gap: 4px;
+      flex-shrink: 0; /* #main is a flex column; without this the bar collapses on phones */
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
